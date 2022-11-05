@@ -17,7 +17,7 @@ async function bundleFiles(dirPathInput, dirPathOutput, fileExt) {
       const filePath = path.join(dirPathInput, file.name);
       const readStream = fs.createReadStream(filePath);
 
-      readStream.on('data', (chunk) => bundleWriteStream.write(chunk))
+      readStream.on('data', (chunk) => bundleWriteStream.write(chunk));
     }
   });
 }
