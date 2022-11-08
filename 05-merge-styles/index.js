@@ -9,17 +9,22 @@ async function bundleFiles(dirPathInput, dirPathOutput, fileExt) {
     path.join(dirPathOutput, `${FILE_NAME}.${fileExt}`),
   );
 
-  dirFiles.forEach((file) => {
+  for (let file of dirFiles) {
     if (
-      file.isFile().toString() === 'true'
-      && file.name.slice(file.name.length - fileExt.length) === fileExt
+      file.isFile() && file.name.slice(file.name.length - fileExt.length) === fileExt
     ) {
       const filePath = path.join(dirPathInput, file.name);
       const readStream = fs.createReadStream(filePath);
 
-      readStream.on('data', (chunk) => bundleWriteStream.write(chunk));
+      await new Promise((resolve) => {
+        readStream.on('data', (chunk) => bundleWriteStream.write(chunk));
+        readStream.on('end', () => {
+          bundleWriteStream.write('\n');
+          resolve();
+        });
+      });
     }
-  });
+  }
 }
 bundleFiles(
   path.join(__dirname, 'styles'),
