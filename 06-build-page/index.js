@@ -23,13 +23,21 @@ async function createBundle(inputDir, outputDir, fileExtension) {
   const dirInfo = await fsPromis.readdir(inputDir, {withFileTypes: true});
   const writeStream = fs.createWriteStream(path.join(outputDir, `${BUNDLE_NAME}.${fileExtension}`));
 
-  dirInfo.forEach((file) => {
-    if (file.isFile().toString() === 'true' && file.name.slice(file.name.length - fileExtension.length) === fileExtension) {
+  for (let file of dirInfo) {
+    if (
+      file.isFile() && file.name.slice(file.name.length - fileExtension.length) === fileExtension)
+    {
       const readStream = fs.createReadStream(path.join(inputDir, file.name));
 
-      readStream.pipe(writeStream);
+      await new Promise((resolve) => {
+        readStream.on('data', (chunk) => writeStream.write(chunk));
+        readStream.on('end', () => {
+          writeStream.write('\n');
+          resolve();
+        });
+      });
     }
-  });
+  }
 }
 
 async function changeTemplates(inputFile, outputDir, componentsDir) {
@@ -40,7 +48,9 @@ async function changeTemplates(inputFile, outputDir, componentsDir) {
   const componentsData = {};
 
   for (let component of componentsInfo) {
-    if (component.isFile() && component.name.slice(component.name.length - 5) === '.html') {
+    const componentExtension = component.name.slice(component.name.length - 5);
+
+    if (component.isFile() && componentExtension === '.html') {
       componentsData[component.name] = await fsPromis.readFile(path.join(componentsDir, component.name), 'utf8');
     }
   }
@@ -53,7 +63,9 @@ async function changeTemplates(inputFile, outputDir, componentsDir) {
 
     _transform(chunk, encoding, callback) {
       for (let component of componentsInfo) {
-        chunk = chunk.replace(`{{${component.name.slice(0, component.name.length - 5)}}}`, componentsData[component.name]);
+        const regExp = new RegExp(`{{${component.name.slice(0, component.name.length - 5)}}}`, 'g');
+
+        chunk = chunk.replace(regExp, componentsData[component.name]);
       }
       this.push(chunk);
       callback();
